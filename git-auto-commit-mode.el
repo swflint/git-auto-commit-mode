@@ -84,11 +84,18 @@ If non-nil a git push will be executed after each commit."
     :type 'string)
 
 (defcustom gac-silent-message-p nil
-    "Should git output be output to the message area?"
-    :tag "Quiet message output"
-    :group 'git-auto-commit-mode
-    :type 'boolean)
+  "Should git output be output to the message area?"
+  :tag "Quiet message output"
+  :group 'git-auto-commit-mode
+  :type 'boolean)
 
+(defcustom gac-post-commit-functions nil
+  "Functions to run after commit.
+
+Functions will be called as an irregular hook, with a single
+argument (FILENAME)."
+  :group 'git-auto-commit-mod
+  :type 'hook)
 
 (defcustom gac-debounce-interval nil
   "Debounce automatic commits to avoid hammering Git.
@@ -175,13 +182,14 @@ Default to FILENAME."
                     (file-name-nondirectory buffer-file)))
          (commit-msg (gac--commit-msg buffer-file))
          (default-directory (file-name-directory buffer-file)))
-    (funcall (if gac-silent-message-p
-                 #'call-process-shell-command
-                 #'shell-command)
-     (concat "git add " gac-add-additional-flag " " (shell-quote-argument filename)
-             gac-shell-and
-             "git commit -m " (shell-quote-argument commit-msg)
-             " " gac-commit-additional-flag))))
+    (prog1 (funcall (if gac-silent-message-p
+                        #'call-process-shell-command
+                      #'shell-command)
+                    (concat "git add " gac-add-additional-flag " " (shell-quote-argument filename)
+                            gac-shell-and
+                            "git commit -m " (shell-quote-argument commit-msg)
+                            " " gac-commit-additional-flag))
+      (run-hook-with-args 'gac-post-commit-functions filename))))
 
 (defun gac-push (buffer)
   "Push commits to the current upstream.
